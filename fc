@@ -1,0 +1,5 @@
+#prevents aoc trying to open display
+unset DISPLAY 
+aoc --fp-relaxed --fpc --report "$@"
+ 
+
