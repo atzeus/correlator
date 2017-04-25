@@ -14,3 +14,5 @@ The current theory is that while there are enough DSP nodes, the paths on the FP
 
 This is prevented by the Trickle architecture which is a systolic array architecture.
 The code in Trickle.hs is Haskell code for geneterating code for this.
+
+Will also not route on 16x16
