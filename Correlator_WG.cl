@@ -9,7 +9,7 @@
 #define NR_BLOCK_X             (NR_RECEIVERS / BLOCK_SIZE_X)             
 #define NR_BLOCKS              (NR_BLOCK_X * (NR_BLOCK_X + 1)) / 2
 #define OUTSIZE                NR_BLOCKS * BLOCK_SIZE
-#define SIMD_WORK_ITEMS                4
+#define SIMD_WORK_ITEMS                8
 
 typedef signed char int8_t;
 typedef float2 fcomplex;
@@ -38,8 +38,12 @@ void Correlator(__global OutputType *restrict output, const __global volatile In
   __local fcomplex memy[BLOCK_SIZE_X];
 
 	for (int time = 0 ; time < NR_SAMPLES_PER_CHANNEL; time++){
-		memx[x] = (*input)[time][blockx + x];
-		memy[y] = (*input)[time][blocky + y];
+		if(y == 0){
+			memx[x] = (*input)[time][blockx + x];
+		} else if (x == 0){
+			memy[y] = (*input)[time][blocky + y];
+		}
+		barrier(CLK_LOCAL_MEM_FENCE);
 		res += mulConj( memx[x] , memy[y]);
 	}
 	(*output)[block + x * BLOCK_SIZE + y] = res;

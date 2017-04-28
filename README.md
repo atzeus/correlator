@@ -1,6 +1,6 @@
 # correlator
 
-Correlator block will not route blocksize > 8 even though Arriana 10 has 1536 DSP blocks, and uses 4 per sum[i][j]+=mulConj(memx[i],memy[j]). Theoretically, we should be able to handle blocks of max 19x19.
+Correlator block will not route blocksize > 10 even though Arriana 10 has 1536 DSP blocks, and uses 4 per sum[i][j]+=mulConj(memx[i],memy[j]). Theoretically, we should be able to handle blocks of max 19x19.
 
 The message is:
 
@@ -15,4 +15,20 @@ The current theory is that while there are enough DSP nodes, the paths on the FP
 This is prevented by the Trickle architecture which is a systolic array architecture.
 The code in Trickle.hs is Haskell code for geneterating code for this.
 
-Will also not route on 16x16
+Results: 
+
+
+Scatter to memory (writes non-contigous):
+
+Correlate8: 0.0303401 , 178Mhz, 50.16% stall, 49.7% occupancy, 5685MB/s (per bank)
+Correlate10: 0.0833752, 151Mhz, 33.28% stall, 13.5% occupancy, 4835MB/s (per bank)
+Trickle8: 0.0846193 , 194Mhz 50% stall, 50% occupancy, 6208MB/s (per bank)
+Trickle10: 0.0846168 , 148.9Mhz, 30.53% stall, 13.6% occupancy, 4787.5MB/s (per bank) 
+
+Does not really help so far. Apperently this is not the issue.
+
+Trying: write contigous, unroll in time, simplify trickle logic
+
+I do not unstand why the stall is so high. The memory access is contigous and profile says memory access is coalesced, but burst is reported to be 1 instead of 8. Trying non-volatile memory. 
+
+Maybe the point is that we have 2 loads instead of 1 per clock cycle. Resulting in a 50% occupancy.
