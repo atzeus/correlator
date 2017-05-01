@@ -96,7 +96,7 @@ void Correlator(__global OutputType *restrict output, const __global volatile In
 			}
 		}
 
-		blocky+=NR_7/7;
+		blocky+=NR_7;
 		if(blocky > blockx){
 			blockx+=NR_7;
 			blocky = 0;
