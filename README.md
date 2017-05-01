@@ -35,6 +35,10 @@ I do not unstand why the stall is so high. The memory access is contigous and pr
 
 Maybe the point is that we have 2 loads instead of 1 per clock cycle. Resulting in a 50% occupancy.
 
+Trying: a simpler trickle architecture
+Fixed precision
+Wide reads
+
 # before correlator
 
 A fully unrolled FFT takes the following floor-space:

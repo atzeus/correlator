@@ -4,7 +4,7 @@
 #define NR_CHANNELS		64
 #define NR_POLARIZATIONS        2
 #define	COMPLEX			2
-#define NR_7                    4
+#define NR_7                    2
 #define BLOCK_SIZE_X            (7 * NR_7)
 #define BLOCK_SIZE              (BLOCK_SIZE_X * BLOCK_SIZE_X)
 #define NR_BLOCK_X             (NR_RECEIVERS / BLOCK_SIZE_X)             
