@@ -21,64 +21,6 @@ inline float2 cmul(float2 a, float2 b)
   return (float2)(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
 }
 
-__kernel __attribute__((reqd_work_group_size(1,1,1)))__attribute__((max_global_work_dim(0)))
-void FIR_Filter(__global OutputType *restrict output, const __global InputType *restrict input, const __global WeightsType *restrict filterWeights, const __global vType *restrict vi, const __global dvType *restrict dvi)
-{
-	float weights[NR_CHANNEL_BLOCK][CHANNEL_BLOCK][NR_TAPS];
-	char2 history[NR_CHANNEL_BLOCK][CHANNEL_BLOCK][NR_TAPS];
-	for(int chb = 0 ; chb < NR_CHANNEL_BLOCK ; chb++){
-		for(int ch = 0 ; ch < CHANNEL_BLOCK ; ch++){
-			for (int i = 0; i < NR_TAPS; i ++) {
-				weights[chb][ch][i] = (*filterWeights)[chb * CHANNEL_BLOCK + ch][i];
-			}
-		}
-	}
-	for(int chb = 0 ; chb < NR_CHANNEL_BLOCK ; chb++){
-		for(int ch = 0 ; ch < CHANNEL_BLOCK ; ch++){
-			for (int i = 0; i < NR_TAPS; i ++) {
-				history[chb][ch][i] = (char2)0;
-			}
-		}
-	}
-  float2 v[NR_CHANNEL_BLOCK][CHANNEL_BLOCK], dv[NR_CHANNEL_BLOCK][CHANNEL_BLOCK];
-	for(int chb = 0 ; chb < NR_CHANNEL_BLOCK ; chb++){
-		for(int ch = 0 ; ch < CHANNEL_BLOCK ; ch++){
-			v[chb][ch] = (*vi)[chb * CHANNEL_BLOCK + ch];
-			dv[chb][ch] = (*dvi)[chb * CHANNEL_BLOCK + ch];
-		}
-	}
-	for (uint time = 0; time < NR_SAMPLES_PER_CHANNEL + NR_TAPS - 1; time ++) {
-		fcomplex sum[NR_CHANNEL_BLOCK][CHANNEL_BLOCK];
-		for(int chb = 0 ; chb < NR_CHANNEL_BLOCK ; chb++){
-			for(int ch = 0 ; ch < CHANNEL_BLOCK ; ch++){
-				for(int i = 0; i < NR_TAPS - 1; i++){
-					history[chb][ch][i+1] = history[chb][ch][i];
-				}
-				history[chb][ch][0] = (*input)[time][ch];
-				fcomplex s = (fcomplex)0;
-				for(int i = 0 ; i < NR_TAPS ; i++){
-					s+= (float2)((float)(history[ch][i].x), (float)(history[ch][i].y)) * weights[ch][i];
-				}
-		  sum[chb][ch] = s;
-		}
-		float2  b[8][8], c[8][8], fftout[8][8];
-
-  	radix_8x8_fwd(b, sum);
-  	for (int i = 0; i < 8; i ++) {
-    	for (int j = 0; j < 8; j ++) {
-      	c[i][j] = cmul(b[i][j], weights[i][j]);
-			}
-		}
-
-  	radix_8x8_fwd(fftout, c);
-	
- 	 for (unsigned ch = 0; ch < NR_CHANNELS; ch ++) {
-		if (time >=  NR_TAPS - 1) {
-	  	(*output)[recv][time - NR_TAPS - 1][ch] = cmul(v[ch], fftout[ch]);
-	  	v[ch] = cmul(v[ch], dv[ch]);
-		}
-	}
-}
 
 #define DIR (-1)
 
@@ -86,10 +28,6 @@ typedef float4  float2x2;
 typedef float16 float8x2;
 
 
-inline float2 cmul(float2 a, float2 b)
-{
-  return (float2)(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
-}
 
 
 inline float8x2 bitreverse8(float8x2 a)
@@ -103,42 +41,14 @@ inline float8x2 bitreverse8(float8x2 a)
   //return (float2x2)(a.s01 + a.s23, a.s01 - a.s23);
 //}
 
-void radix2_fwd(float2 *restrict out0, float2 *restrict out1, float2 in0, float2 in1)
+inline void radix2_fwd(float2 *restrict out0, float2 *restrict out1, float2 in0, float2 in1)
 {
   *out0 = in0 + in1;
   *out1 = in0 - in1;
 }
 
 
-#if 0
-float8x2 radix8_fwd(float8x2 a)
-{
-  a.s0189 = radix2_fwd(a.s0189);
-  a.s23AB = radix2_fwd(a.s23AB);
-  a.s45CD = radix2_fwd(a.s45CD);
-  a.s67EF = radix2_fwd(a.s67EF);
-  a.sAB   = cmul(a.sAB, (float2)(.70710678118654752440f,(DIR)*.70710678118654752440f));
-  a.sCD   = (float2)(DIR*-a.sD,DIR*a.sC);
-  a.sEF   = cmul(a.sEF, (float2)(-.70710678118654752440f,(DIR)*.70710678118654752440f));
-
-  a.s0145 = radix2_fwd(a.s0145);
-  a.s2367 = radix2_fwd(a.s2367);
-  a.s89CD = radix2_fwd(a.s89CD);
-  a.sABEF = radix2_fwd(a.sABEF);
-  a.s67   = (float2)(DIR*-a.s7,DIR*a.s6);
-  a.sEF   = (float2)(DIR*-a.sF,DIR*a.sE);
-
-  a.s0123 = radix2_fwd(a.s0123);
-  a.s4567 = radix2_fwd(a.s4567);
-  a.s89AB = radix2_fwd(a.s89AB);
-  a.sCDEF = radix2_fwd(a.sCDEF);
-
-  return bitreverse8(a);
-}
-#endif
-
-
-void radix_8x8_fwd(float2 out[8][8], const float2 in[8][8])
+inline void radix_8x8_fwd(float2 out[8][8], const float2 in[8][8])
 {
   for (int i = 0; i < 8; i ++) {
     float2 b[8], c[8];
@@ -168,7 +78,7 @@ void radix_8x8_fwd(float2 out[8][8], const float2 in[8][8])
 }
 
 
-__constant float2 weights[8][8] = 
+__constant float2 fftweights[8][8] = 
 {
   {
     (float2)(1.f,0.f),
@@ -244,5 +154,117 @@ __constant float2 weights[8][8] =
     (float2)(0.0980171403296f,0.995184726672f),
   }
 };
+
+__kernel __attribute__((reqd_work_group_size(1,1,1)))__attribute__((max_global_work_dim(0)))
+void FIR_Filter(__global OutputType *restrict output, const __global InputType *restrict input, const __global WeightsType *restrict filterWeights, const __global vType *restrict vi, const __global dvType *restrict dvi)
+{
+
+	float weights[NR_CHANNEL_BLOCK][CHANNEL_BLOCK][NR_TAPS];
+	char2 history[NR_CHANNEL_BLOCK][CHANNEL_BLOCK][NR_TAPS];
+	for(int chb = 0 ; chb < NR_CHANNEL_BLOCK ; chb++){
+		for(int ch = 0 ; ch < CHANNEL_BLOCK ; ch++){
+			for (int i = 0; i < NR_TAPS; i ++) {
+				weights[chb][ch][i] = (*filterWeights)[chb * CHANNEL_BLOCK + ch][i];
+			}
+		}
+	}
+	for(int chb = 0 ; chb < NR_CHANNEL_BLOCK ; chb++){
+		for(int ch = 0 ; ch < CHANNEL_BLOCK ; ch++){
+			for (int i = 0; i < NR_TAPS; i ++) {
+				history[chb][ch][i] = (char2)0;
+			}
+		}
+	}
+	/*
+  float2 v[NR_CHANNEL_BLOCK][CHANNEL_BLOCK], dv[NR_CHANNEL_BLOCK][CHANNEL_BLOCK];
+	for(int chb = 0 ; chb < NR_CHANNEL_BLOCK ; chb++){
+		for(int ch = 0 ; ch < CHANNEL_BLOCK ; ch++){
+			v[chb][ch] = (*vi)[chb * CHANNEL_BLOCK + ch];
+			dv[chb][ch] = (*dvi)[chb * CHANNEL_BLOCK + ch];
+		}
+	}
+	(*/
+	for (uint time = 0; time < NR_SAMPLES_PER_CHANNEL + NR_TAPS - 1; time ++) {
+		fcomplex sum[NR_CHANNEL_BLOCK][CHANNEL_BLOCK];
+		#pragma unroll
+		for(int chb = 0 ; chb < NR_CHANNEL_BLOCK ; chb++){
+			#pragma unroll
+			for(int ch = 0 ; ch < CHANNEL_BLOCK ; ch++){
+				#pragma unroll
+				for(int i = 0; i < NR_TAPS - 1; i++){
+					history[chb][ch][i+1] = history[chb][ch][i];
+				}
+				history[chb][ch][0] = (*input)[time][ch];
+				fcomplex s = (fcomplex)0;
+				#pragma unroll
+				for(int i = 0 ; i < NR_TAPS ; i++){
+					s+= (float2)((float)(history[chb][ch][i].s0), (float)(history[chb][ch][i].s1)) * weights[chb][ch][i];
+				}
+		  (*output)[time - NR_TAPS - 1][chb * NR_CHANNEL_BLOCK + ch]= s;
+			}
+		}
+		/*
+		float2  b[8][8], c[8][8], fftout[8][8];
+
+	  	radix_8x8_fwd(b, sum);
+	  	#pragma unroll
+	  	for (int i = 0; i < 8; i ++) {
+	  		#pragma unroll
+			for (int j = 0; j < 8; j ++) {
+		  	c[i][j] = cmul(b[i][j], fftweights[i][j]);
+			}
+		}
+
+	  	radix_8x8_fwd(fftout, c);
+
+		unsigned chb = 0;
+		unsigned chbm = 0;
+		#pragma unroll
+	 	 for (unsigned ch = 0; ch < NR_CHANNELS; ch ++) {
+			if (time >=  NR_TAPS - 1) {
+		  	(*output)[time - NR_TAPS - 1][ch] = cmul(v[chb][chbm], fftout[chb][chbm]);
+		  	v[chb][chbm] = cmul(v[chb][chbm], dv[chb][chbm]);
+			}
+			chbm++;
+			if(chbm == CHANNEL_BLOCK){
+				chb++;
+				chbm = 0;
+			}
+		}
+		*/
+	}
+}
+
+
+
+#if 0
+float8x2 radix8_fwd(float8x2 a)
+{
+  a.s0189 = radix2_fwd(a.s0189);
+  a.s23AB = radix2_fwd(a.s23AB);
+  a.s45CD = radix2_fwd(a.s45CD);
+  a.s67EF = radix2_fwd(a.s67EF);
+  a.sAB   = cmul(a.sAB, (float2)(.70710678118654752440f,(DIR)*.70710678118654752440f));
+  a.sCD   = (float2)(DIR*-a.sD,DIR*a.sC);
+  a.sEF   = cmul(a.sEF, (float2)(-.70710678118654752440f,(DIR)*.70710678118654752440f));
+
+  a.s0145 = radix2_fwd(a.s0145);
+  a.s2367 = radix2_fwd(a.s2367);
+  a.s89CD = radix2_fwd(a.s89CD);
+  a.sABEF = radix2_fwd(a.sABEF);
+  a.s67   = (float2)(DIR*-a.s7,DIR*a.s6);
+  a.sEF   = (float2)(DIR*-a.sF,DIR*a.sE);
+
+  a.s0123 = radix2_fwd(a.s0123);
+  a.s4567 = radix2_fwd(a.s4567);
+  a.s89AB = radix2_fwd(a.s89AB);
+  a.sCDEF = radix2_fwd(a.sCDEF);
+
+  return bitreverse8(a);
+}
+#endif
+
+
+
 
 

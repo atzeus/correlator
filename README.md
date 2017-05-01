@@ -1,3 +1,5 @@
+Our board has 1,518 DSP blocks
+
 # correlator
 
 Correlator block will not route blocksize > 10 even though Arriana 10 has 1536 DSP blocks, and uses 4 per sum[i][j]+=mulConj(memx[i],memy[j]). Theoretically, we should be able to handle blocks of max 19x19.
@@ -32,3 +34,40 @@ Trying: write contigous, unroll in time, simplify trickle logic
 I do not unstand why the stall is so high. The memory access is contigous and profile says memory access is coalesced, but burst is reported to be 1 instead of 8. Trying non-volatile memory. 
 
 Maybe the point is that we have 2 loads instead of 1 per clock cycle. Resulting in a 50% occupancy.
+
+# before correlator
+
+A fully unrolled FFT takes the following floor-space:
+
++--------------------------------------------------------------------+
+; Estimated Resource Usage Summary                                   ;
++----------------------------------------+---------------------------+
+; Resource                               + Usage                     ;
++----------------------------------------+---------------------------+
+; Logic utilization                      ;   22%                     ;
+; ALUTs                                  ;    8%                     ;
+; Dedicated logic registers              ;   13%                     ;
+; Memory blocks                          ;   23%                     ;
+; DSP blocks                             ;   72%                     ;
++----------------------------------------+---------------------------;
+
+In my experience this is unlikely to route. The FFT constist of 2x a radix8x8fwd call and some multiplications in between. The multiplications in between take up 192 DSP nodes, and the radix8x8fwd takes up 448 DSP nodes (per call).
+
+A fully unrolled 64 channel, 16 taps FIR Filter takes :
+
++--------------------------------------------------------------------+
+; Estimated Resource Usage Summary                                   ;
++----------------------------------------+---------------------------+
+; Resource                               + Usage                     ;
++----------------------------------------+---------------------------+
+; Logic utilization                      ;   32%                     ;
+; ALUTs                                  ;   11%                     ;
+; Dedicated logic registers              ;   21%                     ;
+; Memory blocks                          ;   86%                     ;
+; DSP blocks                             ;  135%                     ;
++----------------------------------------+---------------------------;
+
+A single 16 taps fir filter takes up 32 DSP Nodes.
+
+
+We need some strategy to chop up FIR-filter/FFT in multiple blocks with hardware sharing. FIR Filter is easy to chop up, but FFT requires some thought.
