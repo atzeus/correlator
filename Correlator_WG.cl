@@ -81,6 +81,7 @@ void Correlator(__global OutputType *restrict output, const __global volatile In
 
 			sum.sE += memx[time].sE * b.x + memx[time].sF * b.y;
 			sum.sF += memx[time].sF * b.x - memx[time].sE * b.y;
+		barrier(CLK_LOCAL_MEM_FENCE);
 		}
 	}
 	(*output)[block][staty] = sum;

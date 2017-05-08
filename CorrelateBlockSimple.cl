@@ -25,15 +25,11 @@ fcomplex  __attribute__((__overloadable__,__always_inline__,const)) mulConj(fcom
 __kernel __attribute__((reqd_work_group_size(1,1,1))) __attribute__((max_global_work_dim(0)))
 void Correlator(__global OutputType *restrict output, const __global volatile InputType *restrict input)
 {
-	int blockx = 0;
-	int blocky = 0;
-	int baselineBlock = 0 
-	fcomplex8 sum[BLOCK_SIZE];
 	for(int ch = 0 ; ch < NR_CHANNELS; ch++){
-
-
+		int blockx = 0;
+		int blocky = 0;
 		for( int baselineBlock = 0 ; baselineBlock < NR_BLOCKS; baselineBlock++) {
-
+			fcomplex8 sum[BLOCK_SIZE];
 	 		#pragma unroll
 			for(int i = 0 ; i < BLOCK_SIZE ; i++){
 				sum[i] = (fcomplex8)0;

@@ -2,8 +2,8 @@ import Data.List
 
 indices = ["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"]
 
-setSum x y = "sum[" ++ show y ++ "].s"++ (indices !! (x * 2)) ++ " += " ++ xr ++ "*" ++ yr ++ " + " ++ xi ++ "*" ++ yi ++ ";\n" ++
-             "sum[" ++ show y ++ "].s"++ ( indices !! (x * 2 + 1)) ++ " += " ++ xi ++ "*" ++ yr ++ " - " ++ xr ++ "*" ++ yi ++ ";\n"
+setSum x y = "sum[SHIFT][" ++ show y ++ "].s"++ (indices !! (x * 2)) ++ " = sum[0][" ++ show y ++ "].s"++ (indices !! (x * 2)) ++ " + " ++ xr ++ "*" ++ yr ++ " + " ++ xi ++ "*" ++ yi ++ ";\n" ++
+             "sum[SHIFT][" ++ show y ++ "].s"++ (indices !! ((x * 2) + 1)) ++ " = sum[0][" ++ show y ++ "].s" ++ (indices !! ((x * 2) + 1)) ++ " + "  ++ xi ++ "*" ++ yr ++ " - " ++ xr ++ "*" ++ yi ++ ";\n"
   where xr = "memx.s" ++ indices !! (x * 2)
         xi = "memx.s" ++ indices !! (x * 2 + 1)
         yr = "memy.s" ++ indices !! (y * 2)
